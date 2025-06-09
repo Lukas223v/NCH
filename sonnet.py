@@ -12,7 +12,10 @@ import logging
 import asyncio
 from typing import Dict, List, Optional, Union, Any, Literal
 import traceback
-# import nacl # Keep if future voice planned
+try:
+    import nacl  # Try to import but don't fail if missing
+except ImportError:
+    pass  # Skip if not available, voice features will be disabled
 import aiohttp # Keep if future direct http planned
 import re
 from pymongo import MongoClient
@@ -620,7 +623,10 @@ class RemoveCategoryView(discord.ui.View):
     @discord.ui.button(label="🧩 Misc", style=discord.ButtonStyle.red, row=2, custom_id="remove_cat_misc")
     async def misc_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._handle_category_button(interaction, 'misc')
-
+        
+    @discord.ui.button(label="🌱 Seeds", style=discord.ButtonStyle.red, row=2, custom_id="remove_cat_seed")
+    async def seed_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._handle_category_button(interaction, 'seed')
 
     async def show_category_items(self, interaction: discord.Interaction, category: str):
         # This interaction *must* be responded to, either with items or no items message
@@ -1171,7 +1177,10 @@ class TemplateCategoryView(discord.ui.View):
     @discord.ui.button(label="🧩 Misc", style=discord.ButtonStyle.primary, row=1, custom_id="tpl_cat_misc")
     async def misc_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._show_items(interaction, 'misc')
-        
+
+    @discord.ui.button(label="🌱 Seeds", style=discord.ButtonStyle.primary, row=1, custom_id="tpl_cat_seed")
+    async def seed_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._show_items(interaction, 'seed')
 
 
 class TemplateItemView(discord.ui.View):
@@ -1288,6 +1297,11 @@ class TemplateVisualCategoryView(discord.ui.View):
     @discord.ui.button(label="🧩 Misc", style=discord.ButtonStyle.primary, row=2, custom_id="tpl_vis_cat_misc")
     async def misc_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._handle_category(interaction, 'misc')      
+        
+    @discord.ui.button(label="🌱 Seeds", style=discord.ButtonStyle.primary, row=2, custom_id="tpl_vis_cat_seed")
+    async def seed_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._handle_category(interaction, 'seed')
+
 
     @discord.ui.button(label="✅ Finish & Save Template", style=discord.ButtonStyle.success, row=3, custom_id="tpl_vis_finish")
     async def finish_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -1698,6 +1712,10 @@ class CategoryView(discord.ui.View):
     async def misc_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._handle_category(interaction, 'misc', "🧩 Add Misc Items", COLORS['INFO'])
 
+    @discord.ui.button(label="🌱 Seeds", style=discord.ButtonStyle.primary, row=2, custom_id="quickadd_cat_seed")
+    async def seed_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._handle_category(interaction, 'seed', "🧩 Add Seed Items", COLORS['INFO'])
+
 
 class StockView(discord.ui.View):
     # This view is sent ephemerally, so timeout is less critical but keep it reasonable
@@ -1830,6 +1848,10 @@ class StockView(discord.ui.View):
     async def misc_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._show_category(interaction, 'misc')    
 
+    @discord.ui.button(label="🌱 Seeds", style=discord.ButtonStyle.primary, row=2, custom_id="stock_view_seed")
+    async def seed_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._show_category(interaction, 'seed')         
+
     @discord.ui.button(label="📊 All Stock", style=discord.ButtonStyle.secondary, row=1, custom_id="stock_view_all") # Changed style
     async def all_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._show_category(interaction, 'all')
@@ -1961,8 +1983,8 @@ class ShopData:
         self.category_emojis: Dict[str, str] = {} # category: emoji
 
         # Default values (will be loaded/overwritten from config)
-        self._default_thresholds = {'bud': 30, 'joint': 100, 'bag': 100, 'tebex': 10, 'fish': 10, 'misc': 10}
-        self._default_emojis = {'bud': '🥦', 'joint': '🚬', 'bag': '🛍️', 'tebex': '💎', 'fish': '🐟', 'misc': '🧩'}
+        self._default_thresholds = {'bud': 50, 'joint': 100, 'bag': 250, 'tebex': 3, 'fish': 50, 'misc': 30, 'seed': 30}
+        self._default_emojis = {'bud': '🥦', 'joint': '🚬', 'bag': '🛍️', 'tebex': '💎', 'fish': '🐟', 'misc': '🧩', 'seed': '🌱'}
 
         logger.info(f"🌍 Running in {APP_ENV.upper()} environment")
         logger.info(f"🗄️ Using database: {DB_NAME}")
@@ -2007,7 +2029,8 @@ class ShopData:
             'tebex_crewname': 'Crew Name', 'tebex_crewcolour': 'Crew Colour',
             'cookedmackerel': 'Cooked Mackerel', 'cookedbass': 'Cooked Bass', 'cookedsalmon': 'Cooked Salmon', 'cookedgrouper': 'Cooked Grouper',
             'cookedpike': 'Cooked Pike', 'catfishnuggets': 'Cooked Catfish', 'cookedyellowfintuna': 'Cooked Yellowfin Tuna',
-            'makeshiftarmour': 'Makeshift Armour', 'rollingpaper': 'Rolling Paper'
+            'makeshiftarmour': 'Makeshift Armour', 'rollingpaper': 'Rolling Paper', 'hempfibres': 'Hemp Fibres',
+            'seed_sojokush': 'Sojo Kush Seed', 'seed_khalifakush': 'Khalifa Kush Seed', 'seed_pineappleexpress': 'Pineapple Express Seed', 'seed_sourdiesel': 'Sour Diesel Seed', 'seed_whitewidow': 'Whacky Seed', 'seed_ogkush': 'Old Seed',
         }
         self.predefined_prices = {
             'bud_sojokush': 5000, 'bud_khalifakush': 1100, 'bud_pineappleexpress': 745, 'bud_sourdiesel': 645,'bud_whitewidow': 630, 'bud_ogkush': 780,
@@ -2016,7 +2039,9 @@ class ShopData:
             'tebex_vinplate': 350000, 'tebex_talentreset': 550000, 'tebex_deep_pockets': 950000,'tebex_crewleadership': 4000000,
             'licenseplate': 535000, 'tebex_carwax': 595000, 'tebex_xpbooster': 1450000, 'tebex_crewname': 2500000, 'tebex_crewcolour': 1000000,
             'cookedmackerel': 500, 'cookedbass': 500, 'cookedgrouper': 500, 'cookedsalmon': 500, 'cookedpike': 750, 'catfishnuggets': 500, 'cookedyellowfintuna': 500,
-            'makeshiftarmour': 2750, 'rollingpaper': 20
+            'makeshiftarmour': 2750, 'rollingpaper': 20, 'hempfibres': 150,
+            'seed_sojokush': 40000, 'seed_khalifakush': 6000, 'seed_pineappleexpress': 1200, 'seed_sourdiesel': 800, 'seed_whitewidow': 600, 'seed_ogkush': 500,
+            
         }
         self.item_categories = {
             'bud': ['bud_ogkush', 'bud_whitewidow', 'bud_sourdiesel', 'bud_pineappleexpress', 'bud_khalifakush', 'bud_sojokush'],
@@ -2024,7 +2049,8 @@ class ShopData:
             'joint': ['joint_ogkush', 'joint_whitewidow', 'joint_sourdiesel', 'joint_pineappleexpress', 'joint_khalifakush', 'joint_sojokush'],
             'tebex': ['tebex_vinplate', 'tebex_talentreset', 'tebex_deep_pockets', 'licenseplate', 'tebex_carwax', 'tebex_xpbooster', 'tebex_crewleadership', 'tebex_crewname', 'tebex_crewcolour'],
             'fish': ['cookedmackerel', 'cookedbass', 'cookedsalmon', 'cookedgrouper', 'cookedpike', 'catfishnuggets', 'cookedyellowfintuna'],
-            'misc': ['makeshiftarmour', 'rollingpaper']
+            'misc': ['makeshiftarmour', 'rollingpaper', 'hempfibres'],
+            'seed': ['seed_sojokush', 'seed_khalifakush', 'seed_pineappleexpress', 'seed_sourdiesel', 'seed_whitewidow', 'seed_ogkush']
         }
 
     def save_data(self) -> None:
@@ -2308,8 +2334,8 @@ shop_data = ShopData()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
-############### HELPER FUNCTIONS ###############
-
+################ HELPER FUNCTIONS ###############
+#ar
 async def is_admin(interaction: discord.Interaction) -> bool:
     """Checks if the interaction user has administrator permissions."""
     if not isinstance(interaction.user, discord.Member): # Check in DMs or user left?
